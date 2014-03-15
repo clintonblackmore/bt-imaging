@@ -17,9 +17,23 @@
 
 
 # Utility programs
-PV=`dirname $0`"/pv"	# Pipe viewer, perfect for knowing how 'dd' is doing
-                        # Source is at http://www.ivarch.com/programs/pv.shtml
+# Replace these variables or functions with things appropriate for the applications you are using
 
+# Pipe viewer, perfect for knowing how 'dd' is doing.  Source at http://www.ivarch.com/programs/pv.shtml
+PV=`dirname $0`"/pv"	
+
+function run_torrent() {
+	# Actually runs the torrent program, using the torrent file specified in $1
+	# Here I've told it to use transmission 2.82 command-line interface utility,
+	# and to kill it 30 seconds after completion
+	"`dirname $0`/transmissioncli" -f "`dirname $0`/kill_torrent_after_seeding_for_30s.sh" "$1"
+	# Note: we check the return status here, so don't add anything after this
+}
+
+function cleanup_after_torrent() {
+	# Deletes the folder where transmission remembers how far it go with this torrent
+	rm -r ${HOME}/Library/Application\ Support/transmission
+}
 
 # Timer code courtesy of Mitch Frazier
 # http://www.linuxjournal.com/content/use-date-command-measure-elapsed-time
@@ -45,15 +59,6 @@ function timer()
         printf '%d:%02d:%02d' $dh $dm $ds
     fi
 }
-
-
-#function print_size()
-#{
-#	local size_in_units="$1"
-#	local finished="0"
-#	for unit in "bytes KiB MiB GiB TiB" ; do
-#		size_in_units 
-#}
 
 
 ###################
@@ -163,15 +168,25 @@ diskutil umount $TARGET_DEVICE_ID
 OUTPUT_DEVICE_NAME="/dev/r${TARGET_DEVICE_ID}"
 
 if [[ $INPUT_FILE_NAME == *torrent ]] ; then
+
+	# Create a symlink to the partition we want to restore on
 	CONTENTS_NAME=`echo $INPUT_FILE_NAME | rev | cut -d "." -f 2- | cut -d "/" -f 1 | rev`
-	rm -r "/Users/sysadmin/Library/Application Support/transmission"
+	echo "Symlinking ~/Downloads/${CONTENTS_NAME} to $OUTPUT_DEVICE_NAME"
 	ln -s $OUTPUT_DEVICE_NAME ~/Downloads/"${CONTENTS_NAME}" 
-	~/Desktop/transmissioncli -f /Users/sysadmin/Documents/kill_torrent_after_seeding_for_30s.sh "$INPUT_FILE_NAME"
-	EXIT_STATUS=$?
+
+	# Write the data blocks using bittorrent!
+	run_torrent "$INPUT_FILE_NAME"
+	EXIT_STATUS=$?		# Hmm... This doesn't seem so helpful here.
+	cleanup_after_torrent
+
+	# Delete symlink
+	rm ~/Downloads/"${CONTENTS_NAME}"
+
 else
 	
-	#dd if="$INPUT_FILE_NAME" of=$OUTPUT_DEVICE_NAME bs=8m
+	# Run 'dd', using the pipe viewer to see the progress
 	dd if="$INPUT_FILE_NAME" bs=1m | "$PV" -s $DATA_SIZE | dd of=$OUTPUT_DEVICE_NAME bs=1m
+	#dd if="$INPUT_FILE_NAME" of=$OUTPUT_DEVICE_NAME bs=1m
 	
 	EXIT_STATUS=$?
 fi
@@ -227,8 +242,6 @@ fi
 echo "Time to expand partition: " `tput smul` " $(timer $EXPAND_START)" `tput rmul`
 
 
-# Delete symlink
-#rm ~/Downloads/"${CONTENTS_NAME}"
 rm info.plist
 
 echo
