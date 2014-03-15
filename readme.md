@@ -120,10 +120,12 @@ Third-Party Tools
 I am including two compiled binaries of third-party tools with the scripts.
 
 === Pipe Viewer
+
 [pv](http://www.ivarch.com/programs/pv.shtml) is a great utility for seeing how much data has gone through a pipe.  I'm using it so that when you restore a .cdr file using dd, you can see how far along the process is. `pv` is under an artistic license.
 
 === Transmission
-Transmission is a BitTorrent client.  I'm including the command-line interface program `transmissioncli`, unchanged from Transmission 2.82, at present.  Transmission is under the GPL, with parts under an MIT license.
+
+[Transmission](http://www.transmissionbt.com/) is a BitTorrent client.  I'm including the command-line interface program `transmissioncli`, unchanged from Transmission 2.82, at present.  Transmission is under the GPL, with parts under an MIT license.
 
 See the licenses folder for more information.
 

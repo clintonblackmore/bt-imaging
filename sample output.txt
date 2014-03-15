@@ -1,0 +1,124 @@
+Sample Output
+=============
+
+This is what the script looks like after it has run.  Think of it as a screenshot.
+
+
+1246:~ sysadmin$ sudo /private/var/sysadmin/Development/bt-imaging/scripts/restore_partition_from_torrent.sh disk0s4 /private/var/sysadmin/test_part.udto.cdr.torrent 
+Password:
+
+RESTORE disk0s4 PARTITION FROM /private/var/sysadmin/test_part.udto.cdr.torrent
+Partition size:      249,603,702,784 bytes; dev: disk0s4; name: Macintosh HD 2 type: Journaled HFS+
+Data file size:          392,835,072 bytes. The data will fit.
+
+Do you wish to erase this partition?
+1) Yes
+2) No
+#? 1
+
+ERASING PARTITION 
+Started partitioning on disk0s4 Macintosh HD 2
+Splitting
+Unmounting disk
+Waiting for the disks to reappear
+Formatting disk0s4 as Mac OS Extended (Journaled) with name Target Volume
+Initialized /dev/rdisk0s4 as a 375 MB HFS Plus volume with a 8192k journal
+Mounting disk
+Finished partitioning on disk0s4 Macintosh HD 2
+/dev/disk0
+   #:                       TYPE NAME                    SIZE       IDENTIFIER
+   0:      GUID_partition_scheme                        *500.1 GB   disk0
+   1:                        EFI                         209.7 MB   disk0s1
+   2:                  Apple_HFS Macintosh HD            249.3 GB   disk0s2
+   3:                 Apple_Boot Recovery HD             815.1 MB   disk0s3
+   4:                  Apple_HFS Target Volume           392.8 MB   disk0s4
+Time to shrink partition:    0:00:02 
+
+IMAGING PARTITION 
+Volume Target Volume on disk0s4 unmounted
+Symlinking ~/Downloads/test_part.udto.cdr to /dev/rdisk0s4
+transmission-cli 2.82+ (14251)
+[13:34:29.941] Transmission 2.82+ (14251) started
+[13:34:29.941] RPC Server: Adding address to whitelist: 127.0.0.1
+[13:34:29.952] UDP: Failed to set receive buffer: No buffer space available
+[13:34:29.952] UDP: Failed to set receive buffer: requested 4194304, got 42080
+[13:34:29.952] DHT: Generating new id
+[13:34:29.992] Saved "/private/var/sysadmin/Library/Application Support/transmission/Torrents/test_part.udto.cdr.dcfa407197aa76e5.torrent"
+[13:34:29.992] test_part.udto.cdr: Pausing
+[13:34:29.992] Changed open file limit from 256 to 1024
+[13:34:29.993] Saved "/private/var/sysadmin/Library/Application Support/transmission/Resume/test_part.udto.cdr.dcfa407197aa76e5.resume"
+[13:34:29.993] test_part.udto.cdr: Queued for verification
+[13:34:29.993] test_part.udto.cdr: Verifying torrent
+[13:34:30.273] Port Forwarding (NAT-PMP): initnatpmp succeeded (0)
+[13:34:30.273] Port Forwarding (NAT-PMP): sendpublicaddressrequest succeeded (2)
+[13:34:36.472] Port Forwarding: State changed from "Not forwarded" to "Starting"
+[13:34:38.142] Port Forwarding: State changed from "Starting" to "???"
+Progress: 2.8%, dl fr[13:35:16.776] DHT: Attempting bootstrap from dht.transmissionbt.com
+Progress: 82.0%, dl from 1 of 1 peers (6.55 MB/s), ul to 0 (0 kB/[13:36:41.188] test_part.udto.cdr: State changed from "Incomplete" to "Complete"
+[13:36:41.188] test_part.udto.cdr: Calling script "/private/var/sysadmin/Development/bt-imaging/scripts/kill_torrent_after_seeding_for_30s.sh"
+Seeding, uploading to 0 of 0 pKilling torrent after seeding for 30 more seconds 
+Seeding, uploading to 0 of 0 peer(s), 0 k[13:37:05.000] test_part.udto.cdr: Starting IPv4 DHT announce (poor, 9 nodes)
+Seedin/private/var/sysadmin/Development/bt-imaging/scripts/restore_partition_from_torrent.sh: line 25: 15410 Terminated: 15          "`dirname $0`/transmissioncli" -f "`dirname $0`/kill_torrent_after_seeding_for_30s.sh" "$1"
+Done imaging.  Exit status = 143
+Time to image partition:    0:02:46 
+
+VERIFYING PARTITION 
+Started file system verification on disk0s4 Target Volume
+Checking file system
+Checking Journaled HFS Plus volume
+Checking extents overflow file
+Checking catalog file
+Checking multi-linked files
+Checking catalog hierarchy
+Checking extended attributes file
+Checking volume bitmap
+Checking volume information
+The volume Macintosh HD 2 appears to be OK
+Finished file system verification on disk0s4 Target Volume
+Done verifying.  Exit status = 0
+Time to verify partition:    0:00:01 
+
+REPAIRING PARTITION 
+Started file system repair on disk0s4 Target Volume
+Checking file system
+Checking Journaled HFS Plus volume
+Checking extents overflow file
+Checking catalog file
+Checking multi-linked files
+Checking catalog hierarchy
+Checking extended attributes file
+Checking volume bitmap
+Checking volume information
+The volume Macintosh HD 2 appears to be OK
+Volume repair complete
+Updating boot support partitions for the volume as required
+Finished file system repair on disk0s4 Target Volume
+Time to repair partition:    0:00:02 
+
+EXPANDING PARTITION 
+Started partitioning on disk0s4 Macintosh HD 2
+Verifying the disk
+Checking file system
+Checking Journaled HFS Plus volume
+Checking extents overflow file
+Checking catalog file
+Checking multi-linked files
+Checking catalog hierarchy
+Checking extended attributes file
+Checking volume bitmap
+Checking volume information
+The volume Macintosh HD 2 appears to be OK
+Resizing
+Finished partitioning on disk0s4 Macintosh HD 2
+/dev/disk0
+   #:                       TYPE NAME                    SIZE       IDENTIFIER
+   0:      GUID_partition_scheme                        *500.1 GB   disk0
+   1:                        EFI                         209.7 MB   disk0s1
+   2:                  Apple_HFS Macintosh HD            249.3 GB   disk0s2
+   3:                 Apple_Boot Recovery HD             815.1 MB   disk0s3
+   4:                  Apple_HFS Macintosh HD 2          249.6 GB   disk0s4
+Volume expanded to its original size of 249603702784.
+Time to expand partition:    0:00:17 
+
+DONE. Total time:    0:03:11 
+1246:~ sysadmin$ 
