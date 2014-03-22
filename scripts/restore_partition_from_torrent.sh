@@ -60,6 +60,55 @@ function timer()
     fi
 }
 
+if which -s tput ; then
+	has_tput=true
+else
+	has_tput=false
+fi
+
+function show_heading()
+{
+	# pass one parameter, the value you wish displayed as a heading
+
+	echo
+	if [ "$has_tput" == true ]; then
+		echo `tput bold`"$1"`tput sgr0`
+	else
+		echo "$1"
+	fi
+	
+	# print out a bar with as many characters as in the title
+	printf '%*s\n' ${#1} '' | tr ' ' '='
+}
+
+function show_warning() 
+{
+	# pass one parameter for the warning to display	
+	if [ "$has_tput" == true ]; then
+		echo `tput setaf`"$1"`tput sgr0`
+	else
+		echo "WARNING: $1"
+	fi
+}
+
+function show_elapsed_time()
+{
+	# Outputs the time it took to do something
+	# $1 = message to prepend
+	# $2 = name of the timer
+	# $3 = message to append
+	#
+	# ex: show_elapsed_time "It took " "$EXPAND_START" " seconds"
+	# would show something like: "It took __10__ seconds"
+	
+	if [ "$has_tput" == true ]; then
+		echo "$1"`tput smul`"$(timer $2)"`tput sgr0`"$3"
+	else
+		echo "$1__$(timer $2)__$3"
+	fi
+}
+
+
 
 ###################
 # Start of script #
@@ -90,17 +139,19 @@ SCRIPT_START=$(timer)
 PARTITION_ID="$1"
 INPUT_FILE_NAME="$2"
 
-echo
-echo `tput bold`"RESTORE $PARTITION_ID PARTITION FROM $INPUT_FILE_NAME"`tput sgr0`
-
-
+show_heading "RESTORE $PARTITION_ID PARTITION FROM $INPUT_FILE_NAME"
 
 # Get some info about the partition
 diskutil info -plist "$PARTITION_ID" > info.plist
-VOLUME_NAME=`defaults read $PWD/info VolumeName`
-TARGET_DEVICE_ID=`defaults read $PWD/info DeviceIdentifier`
-ORIGINAL_VOLUME_SIZE=`defaults read $PWD/info TotalSize`
-FS_TYPE=`defaults read $PWD/info FilesystemName`
+VOLUME_NAME=`defaults read "$PWD/info" VolumeName`
+if [[ "$?" == "1" ]] ; then
+	echo "Error: either the selected volume can not be found"
+	echo "or this script does not have permission to write to a file with drive information"
+	exit 2
+fi 
+TARGET_DEVICE_ID=`defaults read "$PWD/info" DeviceIdentifier`
+ORIGINAL_VOLUME_SIZE=`defaults read "$PWD/info" TotalSize`
+FS_TYPE=`defaults read "$PWD/info" FilesystemName`
 
 #echo "The '$VOLUME_NAME' partition (/dev/$TARGET_DEVICE_ID) is a $ORIGINAL_VOLUME_SIZE byte $FS_TYPE partition."
 
@@ -108,7 +159,11 @@ printf "Partition size: % '20d bytes; dev: $TARGET_DEVICE_ID; name: $VOLUME_NAME
     
 
 # Get some information about the file we are restoring from
-if [[ $INPUT_FILE_NAME == *torrent ]] ; then
+if [[ ! -f "$INPUT_FILE_NAME" ]] ; then
+	echo "Error: the specified .cdr or .cdr.torrent file can not be found or is not a regular file."
+	exit 3
+fi
+if [[ "$INPUT_FILE_NAME" == *torrent ]] ; then
 	DATA_SIZE=`grep -aPo ':lengthi\K[0-9]*' "$INPUT_FILE_NAME"`
 else
 	DATA_SIZE=`stat -f "%z" "$INPUT_FILE_NAME"`
@@ -134,19 +189,18 @@ select yn in "Yes" "No"; do
 done
 
 SHRINK_START=$(timer)
-echo
-echo `tput bold`"ERASING PARTITION $TARGET_DRIVE_ID"`tput sgr0`
+show_heading "ERASING PARTITION $TARGET_DRIVE_ID"
 
 diskutil splitPartition $TARGET_DEVICE_ID 1 "jhfs+" "Target Volume" ${DATA_SIZE}b
 
 # Check that the volume size now matches the torrent's size
 diskutil info -plist "$TARGET_DEVICE_ID" > info.plist
-NEW_VOLUME_SIZE=`defaults read $PWD/info TotalSize`
+NEW_VOLUME_SIZE=`defaults read "$PWD/info" TotalSize`
 
 if [ "$NEW_VOLUME_SIZE" -ne "$DATA_SIZE" ] ; then
 
 	echo
-	echo `tput setaf 1`"Unable to resize the volume to match the torrent's contents exactly."`tput sgr0`
+	show_warning "Unable to resize the volume to match the torrent's contents exactly."
 	echo
 	printf "   New Partition size: % '20d bytes.\n" "$NEW_VOLUME_SIZE"
 	printf "       Data file size: % '20d bytes.\n " "$DATA_SIZE"
@@ -155,12 +209,10 @@ if [ "$NEW_VOLUME_SIZE" -ne "$DATA_SIZE" ] ; then
 	echo "Volume header will require a repair afterwards"
 	echo
 fi 
-echo "Time to shrink partition: " `tput smul` " $(timer $SHRINK_START)" `tput rmul`
-
+show_elapsed_time "Time to shrink partition: " "$SHRINK_START"
 
 IMAGING_START=$(timer)
-echo
-echo `tput bold`"IMAGING PARTITION $TARGET_DRIVE_ID"`tput sgr0`
+show_heading "IMAGING PARTITION $TARGET_DRIVE_ID"
 
 diskutil umount $TARGET_DEVICE_ID
 
@@ -192,12 +244,10 @@ else
 fi
 
 echo "Done imaging.  Exit status = $EXIT_STATUS"
-echo "Time to image partition: " `tput smul` " $(timer $IMAGING_START)" `tput rmul`
-
+show_elapsed_time "Time to image partition: " "$IMAGING_START"
 
 VERIFY_START=$(timer)
-echo
-echo `tput bold`"VERIFYING PARTITION $TARGET_DRIVE_ID"`tput sgr0`
+show_heading "VERIFYING PARTITION $TARGET_DRIVE_ID"
 
 #if [ "$NEW_VOLUME_SIZE" -ne "$DATA_SIZE" ] ; then
 #	echo
@@ -207,12 +257,10 @@ echo `tput bold`"VERIFYING PARTITION $TARGET_DRIVE_ID"`tput sgr0`
 #fi 
 
 echo "Done verifying.  Exit status = $EXIT_STATUS"
-echo "Time to verify partition: " `tput smul` " $(timer $VERIFY_START)" `tput rmul`
-
+show_elapsed_time "Time to verify partition: " "$VERIFY_START"
 
 REPAIR_START=$(timer)
-echo
-echo `tput bold`"REPAIRING PARTITION $TARGET_DRIVE_ID"`tput sgr0`
+show_heading "REPAIRING PARTITION $TARGET_DRIVE_ID"
 
 #if [ "$NEW_VOLUME_SIZE" -ne "$DATA_SIZE" ] ; then
 #	echo
@@ -220,30 +268,27 @@ echo `tput bold`"REPAIRING PARTITION $TARGET_DRIVE_ID"`tput sgr0`
 	diskutil repairVolume $TARGET_DEVICE_ID
 #fi 
 
-echo "Time to repair partition: " `tput smul` " $(timer $REPAIR_START)" `tput rmul`
+show_elapsed_time "Time to repair partition: " "$REPAIR_START"
 
 EXPAND_START=$(timer)
-echo
-echo `tput bold`"EXPANDING PARTITION $TARGET_DRIVE_ID"`tput sgr0`
+show_heading "EXPANDING PARTITION $TARGET_DRIVE_ID"
 
 diskutil resizeVolume $TARGET_DEVICE_ID ${ORIGINAL_VOLUME_SIZE}b
 
 # For interest sake, let's get the volume's size one final time
 diskutil info -plist "$TARGET_DEVICE_ID" > info.plist
-FINAL_VOLUME_SIZE=`defaults read $PWD/info TotalSize`
+FINAL_VOLUME_SIZE=`defaults read "$PWD/info" TotalSize`
 
 if [ "$FINAL_VOLUME_SIZE" -ne "$ORIGINAL_VOLUME_SIZE" ] ; then
-	echo "Strange.  The final volume size is $FINAL_VOLUME_SIZE,"
-	echo "but it was originally $ORIGINAL_VOLUME_SIZE."
+	printf "Strange.  The final volume size is % '20d bytes\n" "$FINAL_VOLUME_SIZE"
+	printf "but it was originally              % '20d bytes\n" "$ORIGINAL_VOLUME_SIZE"
 else
-	echo "Volume expanded to its original size of $ORIGINAL_VOLUME_SIZE."
+	printf "Volume expanded to its original size of % '20d bytes\n" "$ORIGINAL_VOLUME_SIZE"
 fi
 
-echo "Time to expand partition: " `tput smul` " $(timer $EXPAND_START)" `tput rmul`
-
+show_elapsed_time "Time to expand partition: " "$EXPAND_START"
 
 rm info.plist
 
 echo
-echo "DONE. Total time: " `tput smul` " $(timer $SCRIPT_START)" `tput rmul`
-
+show_elapsed_time "DONE. Total time: " "$SCRIPT_START"
