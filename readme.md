@@ -18,7 +18,7 @@ Here is how the bt-imaging tools work.
 
 6. The partition is then resized back to what it was initially.
 
-7. Profit!
+7. Profit!  (See notes on using with DeployStudio).
 
 
 Scroll down for further details and for information about third-party tools.
@@ -98,6 +98,28 @@ To get a feel for what the script looks like when run, see the file 'sample outp
 -------
 
 Well, this will be most profitable, or most useful, when it can be used for imaging computers.  I'd love to make it operate with Deploy Studio or Casper so that a computer can be netbooted and imaged.
+
+### Using with DeployStudio
+
+As of 2014-03-21, the script works with DeployStudio.  To use it:
+
+- put everything from this project's script folder into your DeployStudio scripts folder.
+- put your .torrent file into the DeployStudio scripts folder.
+
+Invoke the script like this, using the Command `restore_partition_from_torrent.sh` and appropriate file names.  (I hope there is a way to let the user choose the partition for a script from the DS GUI; don't know how to do that yet.)
+
+    # Fire it up with information from your torrent in the scripts folder
+    disk0s5  /tmp/DSNetworkRepository/Scripts/pass10m.cdr.torrent
+
+    # Fire it up with a raw partition file stored on anothter drive on the hard disk
+    # (Not useful beyond testing)
+    disk0s5 /Volumes/Macintosh\ HD/private/var/sysadmin/test_part.udto.cdr
+
+I tested both of these and they work.  My test files were fairly small; more testing is needed.  (Please give me a shout if you try it).  
+
+Please note that the script now creates a RAM Disk so that there is room to store information about the torrent pieces and the status of different disks.  Right now I'm setting the size to 50 MB.  I don't know how large it needs to be, but I think fairly small is adequate.  
+
+Also note that you'll want to bring up the log viewer to see what is going on, and the script does not yet report progress to DeployStudio.
 
 ### Enhancements and difficulties:
 

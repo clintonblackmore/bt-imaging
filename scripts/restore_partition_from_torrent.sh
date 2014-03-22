@@ -16,8 +16,11 @@
 # Started by Clinton Blackmore, 2014-03-13
 
 
-# Utility programs
+# Utility programs and settings
 # Replace these variables or functions with things appropriate for the applications you are using
+
+USE_RAMDISK=true
+RAMDISK_SIZE_IN_MBs=50
 
 # Pipe viewer, perfect for knowing how 'dd' is doing.  Source at http://www.ivarch.com/programs/pv.shtml
 PV=`dirname $0`"/pv"	
@@ -108,7 +111,18 @@ function show_elapsed_time()
 	fi
 }
 
-
+function cleanup_ramdisk()
+{
+	# checks for a ram disk and destroys it
+	# no parameters expected
+	
+	if [ "$USE_RAMDISK" == true ]; then
+		show_heading "CLEANING UP RAMDISK"
+		popd
+		HOME="$OLD_HOME"
+		hdiutil eject /Volumes/ramdisk/
+	fi
+}
 
 ###################
 # Start of script #
@@ -138,6 +152,24 @@ SCRIPT_START=$(timer)
 
 PARTITION_ID="$1"
 INPUT_FILE_NAME="$2"
+
+
+if [ "$USE_RAMDISK" == true ]; then
+	show_heading "CREATING RAMDISK"
+	diskutil erasevolume HFS+ "ramdisk" `hdiutil attach -nomount ram://$((RAMDISK_SIZE_IN_MBs * 1024 * 1024 / 512))`
+	if [[ ! -e /Volumes/ramdisk ]] ; then
+		echo "Error: Unable to create RAM Disk."
+		exit 3
+	fi
+	
+	OLD_HOME="$HOME"
+	export HOME="/Volumes/ramdisk"
+	
+	# Folders for use by Transmission
+	mkdir -p "$HOME/Library/Application Support"
+	mkdir -p "$HOME/Downloads"
+	pushd /Volumes/ramdisk
+fi
 
 show_heading "RESTORE $PARTITION_ID PARTITION FROM $INPUT_FILE_NAME"
 
@@ -184,7 +216,7 @@ echo "Do you wish to erase this partition?"
 select yn in "Yes" "No"; do
     case $yn in
         Yes ) break;;
-        No ) exit;;
+        No ) cleanup_ramdisk ; exit;;
     esac
 done
 
@@ -289,6 +321,8 @@ fi
 show_elapsed_time "Time to expand partition: " "$EXPAND_START"
 
 rm info.plist
+
+cleanup_ramdisk
 
 echo
 show_elapsed_time "DONE. Total time: " "$SCRIPT_START"
