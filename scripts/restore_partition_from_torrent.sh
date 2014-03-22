@@ -191,18 +191,27 @@ printf "Partition size: % '20d bytes; dev: $TARGET_DEVICE_ID; name: $VOLUME_NAME
     
 
 # Get some information about the file we are restoring from
-if [[ ! -f "$INPUT_FILE_NAME" ]] ; then
-	echo "Error: the specified .cdr or .cdr.torrent file can not be found or is not a regular file."
-	exit 3
-fi
 if [[ "$INPUT_FILE_NAME" == *torrent ]] ; then
 	DATA_SIZE=`grep -aPo ':lengthi\K[0-9]*' "$INPUT_FILE_NAME"`
 else
-	DATA_SIZE=`stat -f "%z" "$INPUT_FILE_NAME"`
+	if [[ -f "$INPUT_FILE_NAME" ]] ; then
+		# We will copy from a regular file
+		DATA_SIZE=`stat -f "%z" "$INPUT_FILE_NAME"`
+	else
+		# Perhaps we are copying from another partition
+		diskutil info -plist "$INPUT_FILE_NAME" > info.plist
+		INPUT_DEVICE_ID=`defaults read "$PWD/info" DeviceIdentifier`
+		if [[ "$?" == "1" ]] ; then
+			echo "The input for 'dd' is not a regular file"
+			echo "and is not another partition.  Aborting."
+			exit 6
+		fi 
+		INPUT_FILE_NAME="/dev/r${INPUT_DEVICE_ID}"
+		DATA_SIZE=`defaults read "$PWD/info" TotalSize`
+	fi
 fi
 
 printf "Data file size: % '20d bytes. " "$DATA_SIZE"
-
 
 if [ "$ORIGINAL_VOLUME_SIZE" -le "$DATA_SIZE" ] ; then
 	echo "The data will not fit on this volume."
@@ -269,9 +278,15 @@ if [[ $INPUT_FILE_NAME == *torrent ]] ; then
 else
 	
 	# Run 'dd', using the pipe viewer to see the progress
-	dd if="$INPUT_FILE_NAME" bs=1m | "$PV" -s $DATA_SIZE | dd of=$OUTPUT_DEVICE_NAME bs=1m
+	#dd if="$INPUT_FILE_NAME" bs=1m | "$PV" -s $DATA_SIZE | dd of=$OUTPUT_DEVICE_NAME bs=1m
+	# dd without pipe viewer
 	#dd if="$INPUT_FILE_NAME" of=$OUTPUT_DEVICE_NAME bs=1m
 	
+	# Turns out Pipe Viewer doesn't event need 'dd'
+	"$PV" -n -s $DATA_SIZE "$INPUT_FILE_NAME" 2>&1  > "$OUTPUT_DEVICE_NAME" | while read PERCENT_DONE ; do
+		echo "Progress: $PERCENT_DONE"
+	done
+
 	EXIT_STATUS=$?
 fi
 
