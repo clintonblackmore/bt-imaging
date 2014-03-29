@@ -46,14 +46,16 @@ function run_torrent_using_transmission_gui() {
 	mkdir -p ~/Library/Preferences
 	cp "`dirname $0`/org.m0k.transmission.plist" ~/Library/Preferences/
 
+	#launchctl setenv HOME "$HOME"  
+
 	# Here we'll spawn the Transmission (Cocoa) GUI application
-	#"`dirname $0`/Transmission.app/Contents/MacOS/Transmission" &
+	#"`dirname $0`/Transmission.app/Contents/MacOS/Transmission"
 	"`dirname $0`/transmission-daemon" 
 
 	local TRREMOTE="`dirname $0`/transmission-remote"
 
 	# wait until service is running
-	echo "Waiting for Transmission.app to be ready"
+	echo "Waiting for transmission RPC service to be ready"
 	while [ "1" -eq `$TRREMOTE -l 2>&1 | grep -c "Couldn't connect to server"` ] ; do
 		echo .
 		sleep 2
@@ -61,7 +63,7 @@ function run_torrent_using_transmission_gui() {
 	
 	# Download the torrent
 	echo "Downloading Torrent"
-	"$TRREMOTE" --add "$1"
+	"$TRREMOTE"  --download-dir "$HOME/Downloads" --add "$1"
 	
 	# Monitor the download
 	while : ; do
@@ -269,7 +271,7 @@ fi
 
 printf "Data file size: % '20d bytes. " "$DATA_SIZE"
 
-if [ "$ORIGINAL_VOLUME_SIZE" -le "$DATA_SIZE" ] ; then
+if [ "$ORIGINAL_VOLUME_SIZE" -lt "$DATA_SIZE" ] ; then
 	echo "The data will not fit on this volume."
 	exit 2
 else
