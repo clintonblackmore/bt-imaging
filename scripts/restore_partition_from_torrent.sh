@@ -26,11 +26,64 @@ RAMDISK_SIZE_IN_MBs=50
 PV=`dirname $0`"/pv"	
 
 function run_torrent() {
+	run_torrent_using_transmission_gui "$@"
+}
+
+function run_torrent_using_transmission_cli() {
 	# Actually runs the torrent program, using the torrent file specified in $1
 	# Here I've told it to use transmission 2.82 command-line interface utility,
 	# and to kill it 30 seconds after completion
 	"`dirname $0`/transmissioncli" -f "`dirname $0`/kill_torrent_after_seeding_for_30s.sh" "$1"
 	# Note: we check the return status here, so don't add anything after this
+}
+
+function run_torrent_using_transmission_gui() {
+	# Actually runs the torrent program, using the torrent file specified in $1
+	
+	# Possible optimization: copy transmission applications to RAM disk
+
+	# Set preferences
+	mkdir -p ~/Library/Preferences
+	cp "`dirname $0`/org.m0k.transmission.plist" ~/Library/Preferences/
+
+	# Here we'll spawn the Transmission (Cocoa) GUI application
+	#"`dirname $0`/Transmission.app/Contents/MacOS/Transmission" &
+	"`dirname $0`/transmission-daemon" 
+
+	local TRREMOTE="`dirname $0`/transmission-remote"
+
+	# wait until service is running
+	echo "Waiting for Transmission.app to be ready"
+	while [ "1" -eq `$TRREMOTE -l 2>&1 | grep -c "Couldn't connect to server"` ] ; do
+		echo .
+		sleep 2
+	done
+	
+	# Download the torrent
+	echo "Downloading Torrent"
+	"$TRREMOTE" --add "$1"
+	
+	# Monitor the download
+	while : ; do
+		# The result is on the second line of the output
+		local result=`"$TRREMOTE" -t 1 --list | head -n 2 | tail -n 1`
+		echo $result	# let user watching logs see progress
+		# Have we finished downloading it?
+		if [ `echo $result | grep -e "100%.*Done" -c` -eq "1" ] ; then
+			break;
+		fi
+		sleep 15
+	done
+	
+	# Allow it to seed for 30 more seconds
+	echo "Torrent is done.  Seeding for 30 more seconds"
+	sleep 30
+	"$TRREMOTE" -t 1 --remove
+	
+	# Kill the transmission GUI (or daemon)
+	sleep 5
+	killall Transmission
+	killall transmission-daemon
 }
 
 function cleanup_after_torrent() {
@@ -151,8 +204,11 @@ fi
 SCRIPT_START=$(timer)
 
 PARTITION_ID="$1"
-INPUT_FILE_NAME="$2"
+if [ "$PARTITION_ID" == "LAST_RESTORED_DEVICE" ]; then
+	PARTITION_ID="$DS_LAST_RESTORED_DEVICE"
+fi
 
+INPUT_FILE_NAME="$2"
 
 if [ "$USE_RAMDISK" == true ]; then
 	show_heading "CREATING RAMDISK"
