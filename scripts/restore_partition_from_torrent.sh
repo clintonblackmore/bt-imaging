@@ -45,12 +45,13 @@ function run_torrent_using_transmission_gui() {
 	# Set preferences
 	mkdir -p ~/Library/Preferences
 	cp "`dirname $0`/org.m0k.transmission.plist" ~/Library/Preferences/
+	cp "`dirname $0`/org.m0k.transmission.plist" "$OLD_HOME/Library/Preferences/"
 
 	#launchctl setenv HOME "$HOME"  
 
 	# Here we'll spawn the Transmission (Cocoa) GUI application
-	#"`dirname $0`/Transmission.app/Contents/MacOS/Transmission"
-	"`dirname $0`/transmission-daemon" 
+	"`dirname $0`/Transmission.app/Contents/MacOS/Transmission" &
+	#"`dirname $0`/transmission-daemon" 
 
 	local TRREMOTE="`dirname $0`/transmission-remote"
 
