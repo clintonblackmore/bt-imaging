@@ -15,6 +15,9 @@
 
 # Most parameters are set on the command line but these ones main be changed with care
 
+# Do we want to show the GUI, or use a headless daemon?
+SHOW_TRANSMISSION_GUI=true
+
 # Do we wish to verify (and repair, if necessary) the disk after imaging?
 REPAIR_DISK=false
 
@@ -23,14 +26,22 @@ REPAIR_DISK=false
 RAMDISK_SIZE_IN_MBs=50	# How large is it, in megabytes?
 RAMDISK_NAME="RamDisk"	# What is it called? 
 
+# Where are the imaging tools?
+BT_IMAGING_TOOLS=`dirname $0`"/bt-imaging-tools"
+
 # Pipe Viewer is used for monitoring the progress of raw disk copies.
 # It is not needed if you are only doing restores from .torrent files.
 # Source at http://www.ivarch.com/programs/pv.shtml
-PV=`dirname $0`"/bt-imaging-tools/pv"	# Pipe viewer location
+PV="$BT_IMAGING_TOOLS/pv"	# Pipe viewer location
 
 # We create a plist with information about partitions.
 # It needs to be stored in an area with R/W access, preferably
 # before we create the RAM Disk.
+
+if [ -z "$HOME" ]; then
+	HOME=/var/root
+fi
+
 DISK_INFO_FILE="$HOME/Library/DiskInfo"	# Note: no .plist extension here
 
 
@@ -59,7 +70,7 @@ function parse_parameters() {
 		echo "   ex: $0 disk2s1 mypartition.cdr" 
 		echo "   ex: $0 '/Volumes/Macintosh HD' mac_hd.cdr.torrent"
 		echo
-		show_error_and_quit_immediately "Please specify two parameters to this command." 
+		show_error_and_quit_immediately "This command requires two arguments." 
 	fi
 
 	PARTITION_ID="$1"
@@ -75,6 +86,7 @@ function check_disk_sizes() {
 
 	show_heading "RESTORE $PARTITION_ID PARTITION FROM $INPUT_FILE_NAME"
 
+	echo diskutil info -plist "$PARTITION_ID" ">" "$DISK_INFO_FILE.plist"
 	diskutil info -plist "$PARTITION_ID" > "$DISK_INFO_FILE.plist"
 	VOLUME_NAME=`defaults read "$DISK_INFO_FILE" VolumeName`
 	if [[ "$?" == "1" ]] ; then
@@ -149,7 +161,7 @@ function create_ramdisk_and_symlinks() {
 }
 
 # Destructively shrink the target partition to match the size of the input data
-shrink_partition {
+function shrink_partition() {
 	SHRINK_START=$(timer)
 	show_heading "ERASING PARTITION $TARGET_DRIVE_ID"
 
@@ -177,7 +189,7 @@ shrink_partition {
 
 # Actually write the disk image to the disk partition
 # via bittorrent or dd
-restore_from_file {
+function restore_from_file() {
 	show_heading "IMAGING PARTITION $TARGET_DRIVE_ID"
 	IMAGING_START=$(timer)
 
@@ -191,8 +203,8 @@ restore_from_file {
 
 		# Create a symlink to the partition we want to restore on
 		CONTENTS_NAME=`echo $INPUT_FILE_NAME | rev | cut -d "." -f 2- | cut -d "/" -f 1 | rev`
-		echo "Symlinking ~/Downloads/${CONTENTS_NAME} to $OUTPUT_DEVICE_NAME"
-		ln -s $OUTPUT_DEVICE_NAME ~/Downloads/"${CONTENTS_NAME}" 
+		echo "Symlinking /Volumes/${RAMDISK_NAME}/Downloads/${CONTENTS_NAME} to $OUTPUT_DEVICE_NAME"
+		ln -s $OUTPUT_DEVICE_NAME "/Volumes/${RAMDISK_NAME}/Downloads/${CONTENTS_NAME}" 
 
 		# Write the data blocks using bittorrent!
 		run_torrent "$INPUT_FILE_NAME"
@@ -218,7 +230,7 @@ restore_from_file {
 	show_elapsed_time "Time to image partition: " "$IMAGING_START"
 }
 
-repair_partition {
+function repair_partition() {
 	REPAIR_START=$(timer)
 	show_heading "REPAIRING PARTITION $TARGET_DRIVE_ID"
 	diskutil repairVolume $TARGET_DEVICE_ID
@@ -226,11 +238,14 @@ repair_partition {
 }
 
 # Non-destructively resize the disk back to its original size
-enlarge_partition {
+function enlarge_partition() {
 	show_heading "EXPANDING PARTITION $TARGET_DRIVE_ID"
 	EXPAND_START=$(timer)
 
-	diskutil resizeVolume $TARGET_DEVICE_ID ${ORIGINAL_VOLUME_SIZE}b
+	#diskutil resizeVolume $TARGET_DEVICE_ID ${ORIGINAL_VOLUME_SIZE}b
+	diskutil resizeVolume $TARGET_DEVICE_ID R		# Resize partition to be as large as possible
+													# (Handy if process failed on previous go-round -- as we 
+													# don't want to resize to the shrunken size we started with!)
 
 	# For interest sake, let's get the volume's size one final time
 	diskutil info -plist "$TARGET_DEVICE_ID" > "$DISK_INFO_FILE.plist"
@@ -253,27 +268,34 @@ function cleanup()
 	# no parameters expected
 	
 	show_heading "CLEANING UP RAMDISK"
-	hdiutil eject /Volumes/ramdisk/
+	hdiutil eject "/Volumes/$RAMDISK_NAME/"
 }
 
 
 function run_torrent() {
 	# Actually runs the torrent program, using the torrent file specified in $1
 	
-	# Possible optimization: copy transmission applications to RAM disk
+	# Optimization: copy transmission applications to RAM disk
 
 	# Set preferences
 	mkdir -p ~/Library/Preferences
-	cp "`dirname $0`/org.m0k.transmission.plist" ~/Library/Preferences/
-	cp "`dirname $0`/org.m0k.transmission.plist" "$OLD_HOME/Library/Preferences/"
+	cp "$BT_IMAGING_TOOLS/org.m0k.transmission.plist" ~/Library/Preferences/
 
-	#launchctl setenv HOME "$HOME"  
-
-	# Here we'll spawn the Transmission (Cocoa) GUI application
-	"`dirname $0`/Transmission.app/Contents/MacOS/Transmission" &
-	#"`dirname $0`/transmission-daemon" 
-
-	local TRREMOTE="`dirname $0`/transmission-remote"
+	if [ "$SHOW_TRANSMISSION_GUI" == true ]; then
+		# Copy/extract the Transmission (Cocoa) GUI application to the RAM disk
+		tar xjf "$BT_IMAGING_TOOLS/Transmission.app.tar.bz2" -C "/Volumes/$RAMDISK_NAME/"
+		# Spawn the Transmission GUI
+		"/Volumes/$RAMDISK_NAME/Transmission.app/Contents/MacOS/Transmission" &
+	else
+		# Copy the daemon
+		cp "$BT_IMAGING_TOOLS/transmission-daemon" "/Volumes/$RAMDISK_NAME"
+		# and run it
+		"/Volumes/$RAMDISK_NAME/transmission-daemon"
+	fi
+	
+	# Get a local copy of transmission remote
+	cp "$BT_IMAGING_TOOLS/transmission-remote" "/Volumes/$RAMDISK_NAME"
+	local TRREMOTE="/Volumes/$RAMDISK_NAME/transmission-remote"
 
 	# wait until service is running
 	echo "Waiting for transmission RPC service to be ready"
@@ -284,7 +306,7 @@ function run_torrent() {
 	
 	# Download the torrent
 	echo "Downloading Torrent"
-	"$TRREMOTE"  --download-dir "$HOME/Downloads" --add "$1"
+	"$TRREMOTE"  --download-dir "Volumes/$RAMDISK_NAME/Downloads" --add "$1"
 	
 	# Monitor the download
 	while : ; do
@@ -402,7 +424,7 @@ function show_elapsed_time()
 
 SCRIPT_START=$(timer)
 
-parse_parameters
+parse_parameters "$@"
 check_disk_sizes
 create_ramdisk_and_symlinks
 shrink_partition
@@ -411,7 +433,7 @@ if [ "$REPAIR_DISK" == true ]; then
 	repair_partition
 fi
 enlarge_partition
-destroy_ramdisk
+cleanup
 
 echo
 show_elapsed_time "DONE. Total time: " "$SCRIPT_START"
