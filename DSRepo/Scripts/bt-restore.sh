@@ -102,7 +102,11 @@ function check_disk_sizes() {
 	
 
 	# Get some information about the file we are restoring from
-	if [[ "$INPUT_FILE_NAME" == *torrent ]] ; then
+	if [[ "$INPUT_FILE_NAME" == *torrent ]] ; then		
+		# Make sure there is only one file in the torrent
+		if [[ `grep -c ":files" "$INPUT_FILE_NAME"` -gt 0 ]] ; then 
+			show_error_and_quit_immediately "Only torrents of a single file can be restored.  (This is a torrent of multiple files)." 
+		fi		
 		DATA_SIZE=`grep -aPo ':lengthi\K[0-9]*' "$INPUT_FILE_NAME"`
 	else
 		if [[ -f "$INPUT_FILE_NAME" ]] ; then
@@ -202,7 +206,8 @@ function restore_from_file() {
 	if [[ $INPUT_FILE_NAME == *torrent ]] ; then
 
 		# Create a symlink to the partition we want to restore on
-		CONTENTS_NAME=`echo $INPUT_FILE_NAME | rev | cut -d "." -f 2- | cut -d "/" -f 1 | rev`
+		#CONTENTS_NAME=`echo $INPUT_FILE_NAME | rev | cut -d "." -f 2- | cut -d "/" -f 1 | rev`
+		CONTENTS_NAME=`awk '{key=":name"; start=index($0,key); split(substr($0,start), part, ":"); strlen=substr(part[2],length(key)); print substr(part[3],0,strlen)}' "$INPUT_FILE_NAME"`
 		echo "Symlinking /Volumes/${RAMDISK_NAME}/Downloads/${CONTENTS_NAME} to $OUTPUT_DEVICE_NAME"
 		ln -s $OUTPUT_DEVICE_NAME "/Volumes/${RAMDISK_NAME}/Downloads/${CONTENTS_NAME}" 
 
