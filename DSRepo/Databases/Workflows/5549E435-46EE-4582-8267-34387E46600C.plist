@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>ID</key>
+	<string>5549E435-46EE-4582-8267-34387E46600C</string>
+	<key>description</key>
+	<string>Sample workflow to restore an image using bittorrent.</string>
+	<key>meta</key>
+	<string>NO</string>
+	<key>steps</key>
+	<dict>
+		<key>1</key>
+		<dict>
+			<key>addgenericbcd</key>
+			<string>NO</string>
+			<key>automate</key>
+			<string>NO</string>
+			<key>cleanup</key>
+			<string>NO</string>
+			<key>erasetarget</key>
+			<string>YES</string>
+			<key>expandrestoredNTFSvolume</key>
+			<string>NO</string>
+			<key>image</key>
+			<string>Empty Disk Image.dmg</string>
+			<key>multicast</key>
+			<string>NO</string>
+			<key>multicastclientdatarate</key>
+			<integer>125</integer>
+			<key>multicaststartuptimeout</key>
+			<integer>0</integer>
+			<key>multicaststartuptrigger</key>
+			<integer>0</integer>
+			<key>multicaststreamdatarate</key>
+			<integer>100</integer>
+			<key>multicastwaitothers</key>
+			<string>NO</string>
+			<key>nocheck</key>
+			<string>YES</string>
+			<key>rename</key>
+			<string></string>
+			<key>renamebyhostprefs</key>
+			<string>NO</string>
+			<key>restoresystemrecoverypartition</key>
+			<string>NO</string>
+			<key>startupdisk</key>
+			<string>NO</string>
+			<key>targetname</key>
+			<string></string>
+			<key>targettype</key>
+			<string>fixed</string>
+			<key>task</key>
+			<string>restore</string>
+			<key>title</key>
+			<string>Restore</string>
+		</dict>
+		<key>2</key>
+		<dict>
+			<key>automate</key>
+			<string>YES</string>
+			<key>command</key>
+			<string>$$/bt-restore.sh</string>
+			<key>description</key>
+			<string>Restore via BitTorrent.</string>
+			<key>errormessage</key>
+			<string></string>
+			<key>ignoreexecutionfailure</key>
+			<string>NO</string>
+			<key>parameters</key>
+			<string>LAST_RESTORED_DEVICE  /tmp/DSNetworkRepository/Torrents/westwind13-14.cdr.torrent</string>
+			<key>postponedexecution</key>
+			<string>NO</string>
+			<key>targettype</key>
+			<string>lastselectedtarget</string>
+			<key>task</key>
+			<string>generic</string>
+			<key>title</key>
+			<string>Generic</string>
+		</dict>
+	</dict>
+	<key>title</key>
+	<string>BITTORRENT RESTORE</string>
+</dict>
+</plist>
