@@ -253,10 +253,12 @@ function enlarge_partition() {
 	show_heading "EXPANDING PARTITION $TARGET_DRIVE_ID"
 	EXPAND_START=$(timer)
 
-	#diskutil resizeVolume $TARGET_DEVICE_ID ${ORIGINAL_VOLUME_SIZE}b
-	diskutil resizeVolume $TARGET_DEVICE_ID R		# Resize partition to be as large as possible
+	diskutil resizeVolume $TARGET_DEVICE_ID ${ORIGINAL_VOLUME_SIZE}b
+
+	#diskutil resizeVolume $TARGET_DEVICE_ID R		# Resize partition to be as large as possible
 													# (Handy if process failed on previous go-round -- as we 
 													# don't want to resize to the shrunken size we started with!)
+													# Ack. Error obtaining resizing information to grow to maximu.
 
 	# For interest sake, let's get the volume's size one final time
 	diskutil info -plist "$TARGET_DEVICE_ID" > "$DISK_INFO_FILE.plist"
